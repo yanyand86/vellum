@@ -139,6 +139,10 @@ svg{display:block}
   repeating-linear-gradient(180deg,transparent 0 calc(var(--rs) - 2px),var(--rl) calc(var(--rs) - 2px) var(--rs))}
 canvas.ink,canvas.wet{position:absolute;inset:0;width:100%;height:100%;transform-origin:0 0}
 canvas.wet{pointer-events:none}
+#scribepad{position:absolute;left:0;top:0;outline:none;white-space:pre-wrap;overflow-wrap:break-word;overflow:hidden;
+  pointer-events:none;-webkit-user-select:text;user-select:text;caret-color:var(--acc)}
+#editor.type #scribepad{pointer-events:auto}
+#editor.type #scribepad:empty::before{content:attr(data-hint);opacity:.32;pointer-events:none}
 #textwrap{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .tbox{position:absolute;pointer-events:none}
 #editor.type .tbox{pointer-events:auto}
@@ -274,6 +278,7 @@ canvas.wet{pointer-events:none}
 
   <div class="stage" id="stage">
     <div id="wrap"><div class="paper" id="paper"><div class="sheetbg" id="sheetbg"></div></div></div>
+    <div id="scribepad" spellcheck="false" data-hint="Write anywhere with your pencil"></div>
     <div id="textwrap"></div>
     <canvas class="ink" id="ink"></canvas>
     <canvas class="wet" id="wet"></canvas>
@@ -396,8 +401,8 @@ canvas.wet{pointer-events:none}
 <!-- tips sheet -->
 <div class="sheet" id="sheetTips"><div class="grab"></div><div class="body">
   <h2>Tips</h2>
-  <p class="tipp"><b>Tidy handwriting, block by block.</b> Switch to <b>Type</b> and tap anywhere on the page to drop a text block. Write in it with your pencil — iPadOS Scribble converts it to text, and Vellum sets it in that block's own font, size and colour. Every block is independent, so a heading can be Caveat and a note beside it Kalam.</p>
-  <p class="tipp"><b>Move things about.</b> Tap a block to select it, then drag the round grip to reposition and the square grip to change its width. Blocks land neatly on the ruled lines.</p>
+  <p class="tipp"><b>Tidy handwriting, anywhere.</b> Switch to <b>Type</b> and just write on the paper with your pencil — no box to make first. Scribble converts as you go, the words appearing where you wrote and squared up to the ruled lines. Pause a moment and they settle into a block of their own. Keep writing straight underneath and it stays one paragraph.</p>
+  <p class="tipp"><b>Move things about.</b> Tap a block to select it, then drag the round grip to reposition and the square grip to change its width — handy for mind-maps, where every thought is its own block. Each keeps its own font, so a Caveat heading can sit beside a Kalam note.</p>
   <p class="tipp"><b>Room to think.</b> Pinch to zoom, and drag with one finger to pan once a pencil has been seen. Landscape pages suit mind-maps; the focus button hides everything but the paper.</p>
   <p class="tipp"><b>Shape snapping.</b> With <b>Snap</b> on, draw a shape and hold the nib still at the end — your wobbly circle, box, triangle, arrow or line becomes a clean one, still in your chosen ink.</p>
   <p class="tipp"><b>Lasso.</b> Pick the lasso, circle some ink, then move, resize, duplicate, recolour or delete it.</p>
@@ -718,7 +723,7 @@ function updatePg(){
   $('#pgLbl').textContent=(p.cur+1)+' / '+p.pages.length;
   $('#pgPrev').disabled=p.cur===0;$('#pgNext').disabled=p.cur>=p.pages.length-1;
 }
-function goShelf(){clearSel();selBox=null;CUR=null;setFocus(false);$('#editor').classList.remove('on');$('#shelf').classList.add('on');renderShelf()}
+function goShelf(){commitPad();clearSel();selBox=null;CUR=null;setFocus(false);$('#editor').classList.remove('on');$('#shelf').classList.add('on');renderShelf()}
 $('#btnBack').addEventListener('click',goShelf);
 
 /* ---------- stroke engine ---------- */
@@ -815,10 +820,17 @@ stage.addEventListener('pointerdown',e=>{
     if(PTR.size===2){endLive(false);endLasso(false);panning=null;startPinch();return}
     if(PTR.size>2)return;
     if(MODE==='ink'&&fingerOK()){e.preventDefault();startInput(e);return}
+    if(MODE==='type')e.preventDefault();      /* fingers pan the page, they don't select text */
     startPan(e);return;
   }
-  if(MODE==='ink'){e.preventDefault();startInput(e)}
-  else startPan(e);
+  if(MODE==='ink'){e.preventDefault();startInput(e);return}
+  /* Type mode + pencil: never pan — park the sheet's text origin under the nib and
+     hand the touch straight to Scribble. No preventDefault, or Scribble won't engage. */
+  if(e.target===sp||sp.contains(e.target)){
+    clearTimeout(unfTm);
+    if(!padHasText())setPadOrigin(pageXY(e));
+    spFrozen=true;
+  }
 },{passive:false});
 stage.addEventListener('pointermove',e=>{
   if(pinch){if(PTR.has(e.pointerId))PTR.set(e.pointerId,{x:e.clientX,y:e.clientY});movePinch();return}
@@ -836,10 +848,20 @@ stage.addEventListener('pointermove',e=>{
     for(const ev of evs)pushPt(toPt(ev,live.P[live.P.length-1]));
     return;
   }
-  if(MODE==='ink'&&e.pointerType==='pen'&&e.buttons===0)hoverRing(e);
+  if(e.pointerType==='pen'&&e.buttons===0){
+    if(MODE==='ink')hoverRing(e);
+    else if(!spFrozen&&!padHasText()){
+      const q=pageXY(e);
+      if(q.x>6&&q.x<PW-30&&q.y>6&&q.y<PH-10)setPadOrigin(q);
+    }
+  }
 },{passive:false});
 function up(e){
   PTR.delete(e.pointerId);
+  if(MODE==='type'&&e.pointerType==='pen'){
+    clearTimeout(unfTm);
+    unfTm=setTimeout(()=>{if(!padHasText())spFrozen=false},1600);
+  }
   if(pinch){if(PTR.size<2){pinch=null;endCss()}return}
   if(panning&&panning.id===e.pointerId){
     panning=null;endCss();
@@ -1128,6 +1150,7 @@ function doOp(a,dir){
     else for(let j=a.items.length-1;j>=0;j--){const i=P.strokes.indexOf(a.items[j].st);if(i>-1)P.strokes.splice(i,1)}}
   else if(a.op==='edit')a.items.forEach(it=>applySnapState(it.st,dir<0?it.before:it.after));
   else if(a.op==='tadd'){if(dir<0)P.texts=P.texts.filter(t=>t.id!==a.b.id);else P.texts.push(a.b);renderTexts()}
+  else if(a.op==='tedit'){a.b.tx=(dir<0)?a.before:a.after;renderTexts()}
   else if(a.op==='tdel'){if(dir<0)P.texts.splice(Math.min(a.i,P.texts.length),0,a.b);else P.texts=P.texts.filter(t=>t.id!==a.b.id);renderTexts()}
   else if(a.op==='flow'){
     const pd=pad();
@@ -1144,8 +1167,8 @@ function doOp(a,dir){
   }
   clearSel();redraw();updUndo();savePage();markOverflowSoon();
 }
-$('#btnUndo').addEventListener('click',()=>{const s=stacks(pg()),a=s.u.pop();if(!a)return;s.r.push(a);doOp(a,-1)});
-$('#btnRedo').addEventListener('click',()=>{const s=stacks(pg()),a=s.r.pop();if(!a)return;s.u.push(a);doOp(a,1)});
+$('#btnUndo').addEventListener('click',()=>{commitPad();const s=stacks(pg()),a=s.u.pop();if(!a)return;s.r.push(a);doOp(a,-1)});
+$('#btnRedo').addEventListener('click',()=>{commitPad();const s=stacks(pg()),a=s.r.pop();if(!a)return;s.u.push(a);doOp(a,1)});
 function pushOp(a){const s=stacks(pg());s.u.push(a);if(s.u.length>80)s.u.shift();s.r.length=0;updUndo();savePage()}
 
 /* ---------- lasso ---------- */
@@ -1348,14 +1371,17 @@ function sizePreview(){
   d.style.width=w+'px';d.style.height=w+'px';d.style.background=inkCol();d.style.border='none';
 }
 function setMode(m){
+  if(m!=='type')commitPad();
   MODE=m;
   $('#editor').classList.toggle('type',m==='type');
   ink.style.pointerEvents=(m==='type')?'none':'auto';
   $('#fontChip').classList.toggle('hidden',m!=='type');
   ['#brushGroup','#sizeGroup','#snapChip'].forEach(s=>$(s).classList.toggle('hidden',m==='type'));
   syncSeg('#modeSeg','m',m);
+  sp.contentEditable=(m==='type')?CE:'false';
   clearSel();if(m==='ink')selBox=null;
-  if(CUR&&m==='type'&&!pg().texts.length)toast('Tap anywhere on the paper to drop a text block');
+  if(CUR&&m==='type'){spFrozen=false;padDefault();padHint();
+    if(!pg().texts.length)toast('Write anywhere on the paper — it tidies itself up when you pause');}
   document.querySelectorAll('.tin').forEach(t=>{t.contentEditable=(m==='type')?CE:'false';if(m==='ink')t.blur()});
   syncSel();
 }
@@ -1370,9 +1396,11 @@ function snapTop(b,y){
   const rs=RS(),off=(boxLH(b)-b.fs)/2+b.fs*.78;
   return Math.round(Math.max(rs,Math.round((y+off)/rs)*rs)-off);
 }
+function padHint(){if(CUR)sp.dataset.hint=pg().texts.length?'':'Write anywhere with your pencil'}
 function renderTexts(){
   textwrap.innerHTML='';
   if(!CUR)return;
+  padHint();
   pg().texts.forEach(b=>textwrap.appendChild(makeBox(b)));
   positionTexts();syncSel();markOverflowSoon();
 }
@@ -1385,7 +1413,7 @@ function makeBox(b){
   t.spellcheck=false;t.dataset.hint='Write here…';t.textContent=b.tx||'';
   t.addEventListener('input',()=>{b.tx=(CE==='plaintext-only')?t.textContent:t.innerText;savePage();markOverflowSoon()});
   t.addEventListener('focus',()=>{selBox=b.id;syncSel()});
-  t.addEventListener('pointerdown',e=>{e.stopPropagation();selBox=b.id;syncSel()});
+  t.addEventListener('pointerdown',e=>{e.stopPropagation();commitPad();selBox=b.id;syncSel()});
   d.appendChild(t);
   const mv=el('div','tgrip mv'),rz=el('div','tgrip rz');
   grip(mv,b,'move');grip(rz,b,'size');
@@ -1426,6 +1454,7 @@ function positionTexts(){
     t.style.lineHeight=(boxLH(b)*T.s)+'px';t.style.color=b.c||dflt;
     t.style.minHeight=(boxLH(b)*T.s)+'px';
   });
+  positionPad();
   const r=stageRect||stage.getBoundingClientRect();
   textwrap.style.clipPath='inset('+Math.max(0,T.ty)+'px '+Math.max(0,r.width-(T.tx+PW*T.s))+'px '+
     Math.max(0,r.height-(T.ty+PH*T.s))+'px '+Math.max(0,T.tx)+'px)';
@@ -1433,14 +1462,72 @@ function positionTexts(){
 }
 function typeTap(q){
   if(selBox){selBox=null;syncSel();return}
-  const p=pad(),f=fontOf(p.font),fs=Math.round(RS()*f.m);
-  const b={id:uid(),x:0,y:0,w:Math.round(Math.min(PW*.46,460)),f:p.font,fs,c:p.tc||null,html:''};
-  b.x=clamp(Math.round(q.x-18),16,Math.max(16,PW-b.w-16));
-  b.y=snapTop(b,q.y-boxLH(b)*.6);
-  pg().texts.push(b);pushOp({op:'tadd',b});renderTexts();
-  selBox=b.id;syncSel();
-  const d=textwrap.querySelector('[data-id="'+b.id+'"]');
-  if(d)try{d.firstChild.focus()}catch(_){}
+  commitPad();setPadOrigin(q);spFrozen=true;
+  try{sp.focus()}catch(_){}
+}
+
+/* ================= WRITE-ANYWHERE SHEET =================
+   Scribble only converts over an editable field, so in Type mode the whole sheet of
+   paper is one. Its text origin is moved under the nib before you touch down, so the
+   words appear where you wrote rather than at some box's corner. When you pause, the
+   text is cut loose as an ordinary block — same font, same spot, no visible jump —
+   which you can then drag, resize, recolour or flow like any other.                */
+const sp=$('#scribepad');
+let spOrigin={x:112,y:108},spFrozen=false,spTm=0,unfTm=0;
+const padFs=()=>Math.round(RS()*fontOf(pad().font).m);
+const padLH=()=>boxLH({fs:padFs()});
+const padHasText=()=>!!(sp.textContent||'').trim();
+const readEl=el2=>(CE==='plaintext-only')?el2.textContent:el2.innerText;
+const baseOff=()=>{const fs=padFs();return (padLH()-fs)/2+fs*.78};
+function setPadOrigin(q){
+  const lh=padLH();
+  spOrigin={x:clamp(Math.round(q.x),8,Math.max(8,PW-150)),
+            y:clamp(snapTop({fs:padFs()},q.y-baseOff()),-8,Math.max(0,PH-lh))};
+  positionPad();
+}
+function positionPad(){
+  if(!CUR)return;
+  const p=pad(),fs=padFs();
+  sp.style.left=T.tx+'px';sp.style.top=T.ty+'px';
+  sp.style.width=(PW*T.s)+'px';sp.style.height=(PH*T.s)+'px';
+  sp.style.paddingLeft=(spOrigin.x*T.s)+'px';sp.style.paddingTop=(spOrigin.y*T.s)+'px';
+  sp.style.fontFamily=fontOf(p.font).css;sp.style.fontSize=(fs*T.s)+'px';
+  sp.style.lineHeight=(padLH()*T.s)+'px';
+  sp.style.color=p.tc||(TINTS[p.tint]||TINTS.ivory).txt;
+}
+function padDefault(){const p=pad();setPadOrigin({x:p.paper==='ruled'?112:60,y:RS()*2})}
+sp.addEventListener('input',()=>{spFrozen=true;clearTimeout(spTm);spTm=setTimeout(commitPad,4000)});
+sp.addEventListener('blur',()=>{if(padHasText())commitPad()});
+/* a block directly under the last one, same font and size, is a continued paragraph */
+function adjacentAbove(){
+  const fs=padFs(),lh=padLH(),f=pad().font;
+  return pg().texts.find(o=>{
+    if(o.f!==f||o.fs!==fs||Math.abs(o.x-spOrigin.x)>34)return false;
+    const d=boxEl(o.id);if(!d)return false;
+    const gap=spOrigin.y-(o.y+d.firstChild.getBoundingClientRect().height/T.s);
+    return gap>-lh*.55&&gap<lh*.9;
+  });
+}
+function commitPad(){
+  clearTimeout(spTm);
+  if(!CUR||!padHasText()){sp.textContent='';spFrozen=false;return}
+  const txt=readEl(sp).replace(/\s+$/,'');
+  let w=0;
+  try{const r=document.createRange();r.selectNodeContents(sp);
+    for(const q of r.getClientRects())w=Math.max(w,q.width)}catch(_){}
+  sp.textContent='';spFrozen=false;
+  if(!txt.trim())return;
+  const near=adjacentAbove();
+  if(near){
+    const before=near.tx;near.tx=before+'\n'+txt.replace(/^\s+/,'');
+    pushOp({op:'tedit',b:near,before,after:near.tx});
+  }else{
+    const p=pad();
+    const b={id:uid(),x:spOrigin.x,y:spOrigin.y,w:clamp(Math.ceil(w/T.s)+14,90,Math.max(90,PW-spOrigin.x-14)),
+      f:p.font,fs:padFs(),c:p.tc||null,tx:txt};
+    pg().texts.push(b);pushOp({op:'tadd',b});
+  }
+  renderTexts();markOverflowSoon();
 }
 const curBox=()=>pg().texts.find(t=>t.id===selBox);
 const boxEl=id=>textwrap.querySelector('[data-id="'+id+'"]');
@@ -1536,7 +1623,7 @@ function buildFontSheet(){
     c.querySelector('.prev').style.fontFamily=f.css;
     c.addEventListener('click',()=>{
       if(b){const o=fontOf(b.f);b.fs=clamp(Math.round(b.fs*f.m/o.m),14,180);b.f=f.k;positionTexts();markOverflow()}
-      else{pad().font=f.k;applyPadLook()}
+      else{pad().font=f.k;applyPadLook();padDefault()}
       b?savePage():save();buildFontSheet();syncSel();
     });
     list.appendChild(c);
@@ -1566,11 +1653,11 @@ $('#gDelete').addEventListener('click',()=>{
   markDirty(id,null);saveLocal();closeSheets();goShelf();
 });
 /* ---------- pages ---------- */
-$('#pgPrev').addEventListener('click',()=>{const p=pad();if(p.cur>0){p.cur--;saveLocal();loadPage()}});
-$('#pgNext').addEventListener('click',()=>{const p=pad();if(p.cur<p.pages.length-1){p.cur++;saveLocal();loadPage()}});
-$('#pgAdd').addEventListener('click',()=>{const p=pad();p.pages.splice(p.cur+1,0,newPage());p.cur++;savePage();loadPage();toast('Page added')});
+$('#pgPrev').addEventListener('click',()=>{commitPad();const p=pad();if(p.cur>0){p.cur--;saveLocal();loadPage()}});
+$('#pgNext').addEventListener('click',()=>{commitPad();const p=pad();if(p.cur<p.pages.length-1){p.cur++;saveLocal();loadPage()}});
+$('#pgAdd').addEventListener('click',()=>{commitPad();const p=pad();p.pages.splice(p.cur+1,0,newPage());p.cur++;savePage();loadPage();toast('Page added')});
 $('#pgDel').addEventListener('click',()=>{
-  const p=pad();
+  commitPad();const p=pad();
   if(p.pages.length===1){
     if(confirm('Clear this page?')){const old=p.pages[0].id;p.pages[0]=newPage();markDel(CUR,old);savePage();loadPage()}
     return;
@@ -1583,6 +1670,7 @@ $('#pgDel').addEventListener('click',()=>{
 /* ---------- export ---------- */
 const boxText=b=>b.tx||'';
 async function exportPNG(){
+  commitPad();
   const p=pad();if(!p)return;
   const T2=TINTS[p.tint]||TINTS.ivory,EX=2,rs=RS(),gs=Math.round(rs*.63);
   const cv=document.createElement('canvas');cv.width=PW*EX;cv.height=PH*EX;
