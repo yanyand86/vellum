@@ -139,25 +139,11 @@ svg{display:block}
   repeating-linear-gradient(180deg,transparent 0 calc(var(--rs) - 2px),var(--rl) calc(var(--rs) - 2px) var(--rs))}
 canvas.ink,canvas.wet{position:absolute;inset:0;width:100%;height:100%;transform-origin:0 0}
 canvas.wet{pointer-events:none}
-#scribepad{position:absolute;left:0;top:0;outline:none;white-space:pre-wrap;overflow-wrap:break-word;overflow:hidden;
+#textlayer{position:absolute;left:0;top:0;outline:none;white-space:pre-wrap;overflow-wrap:break-word;overflow:hidden;
   pointer-events:none;-webkit-user-select:text;user-select:text;caret-color:var(--acc)}
-#editor.type #scribepad{pointer-events:auto}
-#editor.type #scribepad:empty::before{content:attr(data-hint);opacity:.32;pointer-events:none}
-#textwrap{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.tbox{position:absolute;pointer-events:none}
-#editor.type .tbox{pointer-events:auto}
-.tin{outline:none;white-space:pre-wrap;overflow-wrap:break-word;padding:2px 4px;border-radius:3px;
-  caret-color:var(--acc);-webkit-user-select:text;user-select:text}
-#editor.type .tin{cursor:text}
-.tbox.sel .tin{box-shadow:0 0 0 1.5px rgba(148,171,134,.9);background:rgba(148,171,134,.07)}
-.tbox.over .tin{box-shadow:0 0 0 1.5px rgba(214,138,74,.95);background:rgba(214,138,74,.10)}
-.tbox.over::after{content:'runs off the page';position:absolute;left:0;bottom:-17px;font:600 10px -apple-system,sans-serif;
-  letter-spacing:.3px;color:#d68a4a;white-space:nowrap}
-.tin:empty::before{content:attr(data-hint);opacity:.42}
-.tgrip{position:absolute;display:none;background:#5f7355;border:1.5px solid rgba(255,255,255,.9);box-shadow:0 2px 6px rgba(0,0,0,.4)}
-.tbox.sel .tgrip{display:block}
-.tgrip.mv{left:-11px;top:-11px;width:22px;height:22px;border-radius:50%;cursor:move}
-.tgrip.rz{right:-9px;bottom:-9px;width:18px;height:18px;border-radius:4px;cursor:ew-resize}
+#editor.type #textlayer{pointer-events:auto;cursor:text}
+#editor.type #textlayer:empty::before{content:attr(data-hint);opacity:.3;pointer-events:none}
+#editor.type #textlayer.over{background:linear-gradient(180deg,transparent 88%,rgba(214,138,74,.16))}
 .pcursor{position:fixed;border:1.5px solid var(--acc);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);display:none;z-index:50}
 .zoompill{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:2px;padding:3px;border-radius:12px;
   background:rgba(46,49,41,.92);border:1px solid var(--hair);z-index:20}
@@ -273,13 +259,13 @@ canvas.wet{pointer-events:none}
       <div class="sizedot" id="sizedot"></div>
     </div>
     <button class="chip" id="snapChip"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="4.2"/><rect x="11.5" y="11.5" width="9" height="9" rx="1.4"/></svg><span>Snap</span></button>
-    <button class="chip font hidden" id="fontChip"><span id="fontChipName">Caveat</span><small>font ▾</small></button>
+    <button class="chip hidden" id="flowChip" style="color:#d68a4a;border-color:#d68a4a"><svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4"/><path d="M5 20h14"/></svg><span>Flow to next page</span></button>
+  <button class="chip font hidden" id="fontChip"><span id="fontChipName">Caveat</span><small>font ▾</small></button>
   </div>
 
   <div class="stage" id="stage">
     <div id="wrap"><div class="paper" id="paper"><div class="sheetbg" id="sheetbg"></div></div></div>
-    <div id="scribepad" spellcheck="false" data-hint="Write anywhere with your pencil"></div>
-    <div id="textwrap"></div>
+    <div id="textlayer" spellcheck="false" data-hint="Write anywhere on the paper"></div>
     <canvas class="ink" id="ink"></canvas>
     <canvas class="wet" id="wet"></canvas>
     <div class="zoompill">
@@ -311,15 +297,6 @@ canvas.wet{pointer-events:none}
 </div>
 
 <!-- text block bar -->
-<div class="fbar" id="txtbar">
-  <button id="tFont"><span class="fname" id="tFontName">Caveat</span></button>
-  <button id="tSmall"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
-  <button id="tBig"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-  <button id="tCol"><span class="sw" id="tSw"></span></button>
-  <button id="tFlow" class="hidden"><svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4"/><path d="M5 20h14"/></svg></button>
-  <button id="tDel" class="del"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></button>
-</div>
-
 <div class="scrim" id="scrim"></div>
 
 <!-- notebook design sheet -->
@@ -343,8 +320,10 @@ canvas.wet{pointer-events:none}
 
 <!-- font sheet -->
 <div class="sheet" id="sheetFont"><div class="grab"></div><div class="body">
-  <h2 id="fontSheetTitle">Handwriting font</h2>
-  <p class="sub" id="fontSheetSub">Sets the font for the selected text block.</p>
+  <h2>Handwriting font</h2>
+  <p class="sub" id="fontSheetSub">One handwriting for the whole notebook.</p>
+  <div class="seg" id="fontScope"><button data-x="sel">Selected lines</button><button data-x="all" class="on">Whole notebook</button></div>
+  <div style="height:14px"></div>
   <div id="fontList"></div>
   <div class="fieldlbl">Text colour</div>
   <div class="swrow" id="textColRow"></div>
@@ -401,13 +380,13 @@ canvas.wet{pointer-events:none}
 <!-- tips sheet -->
 <div class="sheet" id="sheetTips"><div class="grab"></div><div class="body">
   <h2>Tips</h2>
-  <p class="tipp"><b>Tidy handwriting, anywhere.</b> Switch to <b>Type</b> and just write on the paper with your pencil — no box to make first. Scribble converts as you go, the words appearing where you wrote and squared up to the ruled lines. Pause a moment and they settle into a block of their own. Keep writing straight underneath and it stays one paragraph.</p>
-  <p class="tipp"><b>Move things about.</b> Tap a block to select it, then drag the round grip to reposition and the square grip to change its width — handy for mind-maps, where every thought is its own block. Each keeps its own font, so a Caveat heading can sit beside a Kalam note.</p>
-  <p class="tipp"><b>Room to think.</b> Pinch to zoom, and drag with one finger to pan once a pencil has been seen. Landscape pages suit mind-maps; the focus button hides everything but the paper.</p>
+  <p class="tipp"><b>Tidy handwriting.</b> Switch to <b>Type</b> and write anywhere on the paper with your pencil. iPadOS Scribble converts it as you go, and Vellum sets it in your chosen handwriting, flowing down the ruled lines from the top margin. Nothing to place, nothing to tidy. Make sure Scribble is on: Settings ▸ Apple Pencil ▸ Scribble.</p>
+  <p class="tipp"><b>More than one hand on a page.</b> The font chip sets the handwriting for the whole notebook. To change only part of a page, select those lines first — drag across them, or double-tap a word — then pick a font: only the selected lines change, so a heading can be in one hand and the notes in another. They stay squared up to the same rules either way.</p>
+  <p class="tipp"><b>Room to think.</b> Pinch to zoom and drag with one finger to pan. Landscape pages suit sketching and tables; the focus button hides everything but the paper.</p>
   <p class="tipp"><b>Shape snapping.</b> With <b>Snap</b> on, draw a shape and hold the nib still at the end — your wobbly circle, box, triangle, arrow or line becomes a clean one, still in your chosen ink.</p>
   <p class="tipp"><b>Lasso.</b> Pick the lasso, circle some ink, then move, resize, duplicate, recolour or delete it.</p>
   <p class="tipp"><b>Ink.</b> Fountain, brush and calligraphy nibs respond to pressure; pencil and pastel shade wider as you tilt. Scribble lives in Settings ▸ Apple Pencil. Squeeze, double-tap and barrel-roll stay with native apps — Safari doesn't receive them.</p>
-  <p class="tipp"><b>Text that runs off the page.</b> A block that outgrows the paper is outlined in amber. Tap it and press the ⤓ button to pour the overflow onto the next page — it breaks on a word, keeps the font, and lands in the same column.</p>
+  <p class="tipp"><b>When a page fills up.</b> Text running past the bottom rule shows an amber fade and a <b>Flow to next page</b> button appears in the tray. Tap it and the overspill moves onto the next page, breaking on a whole word — adding a page if there isn't one.</p>
   <p class="tipp"><b>Sync.</b> The cloud button on the shelf links Vellum to your own Firebase Realtime Database, so notebooks follow you between iPad and iPhone. Edits merge page by page and the newest wins, so two devices touching different pages never fight. Notes are written on-device first, so everything keeps working offline and syncs when you're back.</p>
   <p class="tipp"><b>Make it an app.</b> Share ▸ Add to Home Screen for full-screen writing. Notes save on this device.</p>
 </div></div>
@@ -497,13 +476,17 @@ function savePage(){
   }
   saveLocal();
 }
-const newPage=()=>({id:uid(),strokes:[],texts:[],m:0});
+const newPage=()=>({id:uid(),strokes:[],tx:'',pf:[],m:0});
 function newPad(o){return Object.assign({id:uid(),name:'Notebook',cover:COVERS[(Math.random()*COVERS.length)|0],
   paper:'ruled',tint:'ivory',sp:'m',land:false,font:'caveat',tc:null,tool:'fountain',col:null,hcol:HLPAL[0],
   size:6,cur:0,pages:[newPage()]},o)}
 const padById=id=>S.pads.find(p=>p.id===id);
-const detag=h=>(h||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(div|p)>/gi,'\n')
-  .replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\n+$/,'');
+/* Safari's contenteditable wraps each line in <div>, so the *opening* tag is the line
+   break; treating only </div> as one welds consecutive lines together. */
+const detag=h=>(h||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(div|p)>/gi,'')
+  .replace(/<(div|p)\b[^>]*>/gi,'\n').replace(/<[^>]*>/g,'')
+  .replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+  .replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/^\n+/,'').replace(/\n+$/,'');
 if(!S.dev)S.dev=uid();
 /* migrations: v1 page-wide html -> blocks; blocks -> plain text; pages get ids */
 S.pads.forEach(p=>{
@@ -513,13 +496,16 @@ S.pads.forEach(p=>{
   p.pages.forEach(g=>{
     if(!g.id)g.id=uid();
     if(!g.m)g.m=p.mtime;
-    if(!g.texts)g.texts=[];
-    if(g.html){
-      if(detag(g.html).trim())
-        g.texts.push({id:uid(),x:110,y:110,w:780,f:p.font||'caveat',fs:Math.round(SPACING[p.sp||'m']*fontOf(p.font).m),c:p.tc||null,tx:detag(g.html)});
-      delete g.html;
+    if(g.tx===undefined){
+      let out=[];
+      if(g.html&&detag(g.html).trim())out.push(detag(g.html));
+      if(g.texts&&g.texts.length){
+        g.texts.slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x))
+          .forEach(b=>{const t=(b.tx!==undefined?b.tx:detag(b.html))||'';if(t.trim())out.push(t)});
+      }
+      g.tx=out.join('\n');
     }
-    g.texts.forEach(b=>{if(b.tx===undefined){b.tx=detag(b.html);delete b.html}});
+    delete g.html;delete g.texts;
   });
 });
 
@@ -600,7 +586,7 @@ $('#padSave').addEventListener('click',()=>{
   draft.name=$('#padName').value.trim()||'Notebook';
   if(sheetPadTarget){
     const tp=padById(sheetPadTarget);Object.assign(tp,draft);tp.mtime=Date.now();markDirty(sheetPadTarget,null);
-    if(CUR===sheetPadTarget){setGeom();applyPadLook();fitView();renderTexts();markOverflowSoon()}
+    if(CUR===sheetPadTarget){setGeom();applyPadLook();fitView();renderText()}
     renderShelf();
   }else{
     const np=newPad(draft);S.pads.unshift(np);np.mtime=Date.now();np.pages[0].m=np.mtime;
@@ -615,7 +601,7 @@ $('#btnTips').addEventListener('click',()=>openSheet('#sheetTips'));
 /* ================= EDITOR CORE ================= */
 let PW=1000,PH=1414;
 const stage=$('#stage'),wrap=$('#wrap'),paper=$('#paper'),sheetbg=$('#sheetbg'),
-      textwrap=$('#textwrap'),ink=$('#ink'),wet=$('#wet'),pcursor=$('#pcursor');
+      ink=$('#ink'),wet=$('#wet'),pcursor=$('#pcursor');
 const ictx=ink.getContext('2d'),wctx=wet.getContext('2d');
 const D=Math.min(devicePixelRatio||1,2.5);
 let CUR=null,MODE='ink',TOOL='fountain',COL='#2b2f36',SIZE=6,FOCUS=false;
@@ -675,7 +661,7 @@ function applyT(){
   clampT();
   wrap.style.transform='translate('+T.tx+'px,'+T.ty+'px) scale('+T.s+')';
   $('#zPct').textContent=Math.round(T.s/fitS*100)+'%';
-  positionTexts();
+  positionText();
   if(cssT0)updCss();else schedule();
 }
 function fitView(){
@@ -717,13 +703,13 @@ function openPad(id){
   setGeom();setMode('ink');buildBrushes();buildColors();sizePreview();applyPadLook();syncSnap();
   requestAnimationFrame(()=>{fitView();loadPage()});
 }
-function loadPage(){clearSel();selBox=null;renderTexts();redraw();updatePg();updUndo();markOverflowSoon()}
+function loadPage(){clearSel();selPs=[];renderText();redraw();updatePg();updUndo()}
 function updatePg(){
   const p=pad();
   $('#pgLbl').textContent=(p.cur+1)+' / '+p.pages.length;
   $('#pgPrev').disabled=p.cur===0;$('#pgNext').disabled=p.cur>=p.pages.length-1;
 }
-function goShelf(){commitPad();clearSel();selBox=null;CUR=null;setFocus(false);$('#editor').classList.remove('on');$('#shelf').classList.add('on');renderShelf()}
+function goShelf(){clearSel();CUR=null;setFocus(false);$('#editor').classList.remove('on');$('#shelf').classList.add('on');renderShelf()}
 $('#btnBack').addEventListener('click',goShelf);
 
 /* ---------- stroke engine ---------- */
@@ -823,14 +809,9 @@ stage.addEventListener('pointerdown',e=>{
     if(MODE==='type')e.preventDefault();      /* fingers pan the page, they don't select text */
     startPan(e);return;
   }
-  if(MODE==='ink'){e.preventDefault();startInput(e);return}
-  /* Type mode + pencil: never pan — park the sheet's text origin under the nib and
-     hand the touch straight to Scribble. No preventDefault, or Scribble won't engage. */
-  if(e.target===sp||sp.contains(e.target)){
-    clearTimeout(unfTm);
-    if(!padHasText())setPadOrigin(pageXY(e));
-    spFrozen=true;
-  }
+  /* Type mode + pencil: hand the touch straight to Scribble — never preventDefault
+     or it won't engage, and never pan. The pencil writes. */
+  if(MODE==='ink'){e.preventDefault();startInput(e)}
 },{passive:false});
 stage.addEventListener('pointermove',e=>{
   if(pinch){if(PTR.has(e.pointerId))PTR.set(e.pointerId,{x:e.clientX,y:e.clientY});movePinch();return}
@@ -848,24 +829,14 @@ stage.addEventListener('pointermove',e=>{
     for(const ev of evs)pushPt(toPt(ev,live.P[live.P.length-1]));
     return;
   }
-  if(e.pointerType==='pen'&&e.buttons===0){
-    if(MODE==='ink')hoverRing(e);
-    else if(!spFrozen&&!padHasText()){
-      const q=pageXY(e);
-      if(q.x>6&&q.x<PW-30&&q.y>6&&q.y<PH-10)setPadOrigin(q);
-    }
-  }
+  if(MODE==='ink'&&e.pointerType==='pen'&&e.buttons===0)hoverRing(e);
 },{passive:false});
 function up(e){
   PTR.delete(e.pointerId);
-  if(MODE==='type'&&e.pointerType==='pen'){
-    clearTimeout(unfTm);
-    unfTm=setTimeout(()=>{if(!padHasText())spFrozen=false},1600);
-  }
   if(pinch){if(PTR.size<2){pinch=null;endCss()}return}
   if(panning&&panning.id===e.pointerId){
     panning=null;endCss();
-    if(tapCand){const q=tapCand;tapCand=null;typeTap(q)}
+    if(tapCand){const q=tapCand;tapCand=null;caretAt(q.cx,q.cy)}
     return;
   }
   if(dragSel){endSelDrag();return}
@@ -892,7 +863,7 @@ function startInput(e){
 function startPan(e){
   panning={id:e.pointerId,x0:e.clientX,y0:e.clientY,tx0:T.tx,ty0:T.ty};
   beginCss();
-  if(MODE==='type')tapCand=pageXY(e);
+  if(MODE==='type')tapCand={cx:e.clientX,cy:e.clientY};
 }
 function startPinch(){
   const a=[...PTR.values()];
@@ -1149,26 +1120,24 @@ function doOp(a,dir){
   else if(a.op==='del'){if(dir<0)a.items.forEach(it=>P.strokes.splice(Math.min(it.i,P.strokes.length),0,it.st));
     else for(let j=a.items.length-1;j>=0;j--){const i=P.strokes.indexOf(a.items[j].st);if(i>-1)P.strokes.splice(i,1)}}
   else if(a.op==='edit')a.items.forEach(it=>applySnapState(it.st,dir<0?it.before:it.after));
-  else if(a.op==='tadd'){if(dir<0)P.texts=P.texts.filter(t=>t.id!==a.b.id);else P.texts.push(a.b);renderTexts()}
-  else if(a.op==='tedit'){a.b.tx=(dir<0)?a.before:a.after;renderTexts()}
-  else if(a.op==='tdel'){if(dir<0)P.texts.splice(Math.min(a.i,P.texts.length),0,a.b);else P.texts=P.texts.filter(t=>t.id!==a.b.id);renderTexts()}
+
   else if(a.op==='flow'){
     const pd=pad();
     if(dir<0){
-      a.np.texts=a.np.texts.filter(t=>t.id!==a.nb.id);
-      if(a.moved)P.texts.splice(Math.min(a.moved.i,P.texts.length),0,a.b);else a.b.tx=a.before;
-      if(a.created&&!a.np.texts.length&&!a.np.strokes.length){const i=pd.pages.indexOf(a.np);if(i>-1&&pd.pages.length>1)pd.pages.splice(i,1)}
+      a.g.tx=a.whole.tx;a.g.pf=a.whole.pf;
+      if(a.before.tx){a.np.tx=a.before.tx;a.np.pf=a.before.pf}
+      else if(a.created){const i=pd.pages.indexOf(a.np);if(i>-1&&pd.pages.length>1)pd.pages.splice(i,1)}
+      else{a.np.tx='';a.np.pf=[]}
     }else{
       if(!pd.pages.includes(a.np))pd.pages.splice(pd.cur+1,0,a.np);
-      if(a.moved)P.texts=P.texts.filter(t=>t.id!==a.b.id);else a.b.tx=a.after;
-      a.np.texts.push(a.nb);
+      a.g.tx=a.head.tx;a.g.pf=a.head.pf;a.np.tx=a.tail.tx;a.np.pf=a.tail.pf;
     }
-    a.np.m=Date.now();markDirty(CUR,a.np.id);renderTexts();
+    a.np.m=Date.now();markDirty(CUR,a.np.id);
   }
-  clearSel();redraw();updUndo();savePage();markOverflowSoon();
+  clearSel();renderText();redraw();updUndo();savePage();
 }
-$('#btnUndo').addEventListener('click',()=>{commitPad();const s=stacks(pg()),a=s.u.pop();if(!a)return;s.r.push(a);doOp(a,-1)});
-$('#btnRedo').addEventListener('click',()=>{commitPad();const s=stacks(pg()),a=s.r.pop();if(!a)return;s.u.push(a);doOp(a,1)});
+$('#btnUndo').addEventListener('click',()=>{const s=stacks(pg()),a=s.u.pop();if(!a)return;s.r.push(a);doOp(a,-1)});
+$('#btnRedo').addEventListener('click',()=>{const s=stacks(pg()),a=s.r.pop();if(!a)return;s.u.push(a);doOp(a,1)});
 function pushOp(a){const s=stacks(pg());s.u.push(a);if(s.u.length>80)s.u.shift();s.r.length=0;updUndo();savePage()}
 
 /* ---------- lasso ---------- */
@@ -1254,30 +1223,12 @@ function clearSel(){sel=null;lasso=null;dragSel=null;stopAnts();$('#selbar').cla
 function syncSel(){
   $('#selbar').classList.toggle('on',!!sel);
   if(sel){$('#sSw').style.background=COL;posSelbar()}
-  document.querySelectorAll('.tbox').forEach(d=>d.classList.toggle('sel',d.dataset.id===selBox));
-  $('#txtbar').classList.toggle('on',!!selBox&&MODE==='type');
-  const cb=selBox&&curBox();
-  $('#tFlow').classList.toggle('hidden',!(cb&&overflowPx(cb)>2));
-  if(selBox){
-    const b=pg().texts.find(t=>t.id===selBox);
-    if(b){$('#tFontName').textContent=fontOf(b.f).n;$('#tFontName').style.fontFamily=fontOf(b.f).css;
-      $('#tSw').style.background=b.c||(TINTS[pad().tint]||TINTS.ivory).txt}
-  }
-  posTxtbar();
 }
 function posSelbar(){
   if(!sel)return;
   const bar=$('#selbar'),r=stage.getBoundingClientRect();
   const x=r.left+T.tx+sel.box.x0*T.s,y=r.top+T.ty+sel.box.y0*T.s;
   bar.style.left=clamp(x,8,innerWidth-bar.offsetWidth-8)+'px';
-  bar.style.top=clamp(y-52,r.top+6,innerHeight-60)+'px';
-}
-function posTxtbar(){
-  if(!selBox||MODE!=='type')return;
-  const b=pg().texts.find(t=>t.id===selBox);if(!b)return;
-  const bar=$('#txtbar'),r=stage.getBoundingClientRect();
-  const x=r.left+T.tx+b.x*T.s,y=r.top+T.ty+b.y*T.s;
-  bar.style.left=clamp(x-14,8,innerWidth-bar.offsetWidth-8)+'px';
   bar.style.top=clamp(y-52,r.top+6,innerHeight-60)+'px';
 }
 function startAnts(){if(RM||antsRAF)return;const loop=()=>{ants=(ants+.6)%16;drawSel();antsRAF=(lasso||sel)?requestAnimationFrame(loop):0};antsRAF=requestAnimationFrame(loop)}
@@ -1371,274 +1322,231 @@ function sizePreview(){
   d.style.width=w+'px';d.style.height=w+'px';d.style.background=inkCol();d.style.border='none';
 }
 function setMode(m){
-  if(m!=='type')commitPad();
   MODE=m;
   $('#editor').classList.toggle('type',m==='type');
   ink.style.pointerEvents=(m==='type')?'none':'auto';
   $('#fontChip').classList.toggle('hidden',m!=='type');
   ['#brushGroup','#sizeGroup','#snapChip'].forEach(s=>$(s).classList.toggle('hidden',m==='type'));
   syncSeg('#modeSeg','m',m);
-  sp.contentEditable=(m==='type')?CE:'false';
-  clearSel();if(m==='ink')selBox=null;
-  if(CUR&&m==='type'){spFrozen=false;padDefault();padHint();
-    if(!pg().texts.length)toast('Write anywhere on the paper — it tidies itself up when you pause');}
-  document.querySelectorAll('.tin').forEach(t=>{t.contentEditable=(m==='type')?CE:'false';if(m==='ink')t.blur()});
+  tl.contentEditable=(m==='type')?'true':'false';
+  clearSel();
+  if(CUR){positionText();markOverflow();
+    if(m==='type'&&!(pg().tx||'').trim())toast('Write anywhere on the paper — Scribble sets it on the lines');}
   syncSel();
 }
 $('#modeSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.m)});
 
-/* ---------- text blocks ---------- */
-let selBox=null,tdrag=null;
-const boxLH=b=>Math.max(1,Math.round(b.fs*1.4/RS()))*RS();
-function snapTop(b,y){
-  const p=pad();
-  if(p.paper!=='ruled'&&p.paper!=='cornell')return Math.round(y);
-  const rs=RS(),off=(boxLH(b)-b.fs)/2+b.fs*.78;
-  return Math.round(Math.max(rs,Math.round((y+off)/rs)*rs)-off);
+/* ================= PAGE TEXT =================
+   One editable sheet per page, exactly like the first build: switch to Type, write
+   anywhere on the paper, Scribble converts it, and the words flow down the ruled
+   lines from the top margin. One font per notebook. Nothing to place, nothing to
+   tidy — it organises itself.                                                    */
+const tl=$('#textlayer');
+const txFs=()=>Math.round(RS()*fontOf(pad().font).m);
+const txLH=()=>{const fs=txFs();return Math.max(1,Math.round(fs*1.4/RS()))*RS()};
+/* first baseline sits on the second rule, so the writing rides the lines */
+const txTop=()=>{const fs=txFs();return RS()*2-((txLH()-fs)/2+fs*.78)};
+const txLeft=()=>pad().paper==='ruled'?112:60;
+const txRight=()=>44,txBottom=()=>RS();
+/* A line with its own font is sized so its x-height matches the notebook hand and its
+   line box still spans whole rules — em units throughout, so zooming can't drift it. */
+const k0=()=>txLH()/RS();
+function styleLine(d,fk){
+  const base=fontOf(pad().font);
+  if(!fk||fk===pad().font){delete d.dataset.f;d.removeAttribute('style');return}
+  const f=fontOf(fk);
+  d.dataset.f=fk;
+  d.style.fontFamily=f.css;
+  d.style.fontSize=(f.m/base.m).toFixed(4)+'em';
+  d.style.lineHeight=(k0()/f.m).toFixed(4)+'em';
 }
-function padHint(){if(CUR)sp.dataset.hint=pg().texts.length?'':'Write anywhere with your pencil'}
-function renderTexts(){
-  textwrap.innerHTML='';
+function renderText(){
   if(!CUR)return;
-  padHint();
-  pg().texts.forEach(b=>textwrap.appendChild(makeBox(b)));
-  positionTexts();syncSel();markOverflowSoon();
+  const g=pg(),txt=g.tx||'',pf=g.pf||[];
+  tl.innerHTML='';
+  if(txt.length){
+    txt.split('\n').forEach((t,i)=>{
+      const d=document.createElement('div');
+      if(t.length)d.textContent=t;else d.appendChild(document.createElement('br'));
+      styleLine(d,pf[i]);
+      tl.appendChild(d);
+    });
+  }
+  positionText();markOverflowSoon();
 }
-const CE=(()=>{const d=document.createElement('div');try{d.contentEditable='plaintext-only'}catch(_){}
-  return d.contentEditable==='plaintext-only'?'plaintext-only':'true'})();
-function makeBox(b){
-  const d=el('div','tbox'+(selBox===b.id?' sel':''));d.dataset.id=b.id;
-  const t=el('div','tin');
-  t.contentEditable=(MODE==='type')?CE:'false';
-  t.spellcheck=false;t.dataset.hint='Write here…';t.textContent=b.tx||'';
-  t.addEventListener('input',()=>{b.tx=(CE==='plaintext-only')?t.textContent:t.innerText;savePage();markOverflowSoon()});
-  t.addEventListener('focus',()=>{selBox=b.id;syncSel()});
-  t.addEventListener('pointerdown',e=>{e.stopPropagation();commitPad();selBox=b.id;syncSel()});
-  d.appendChild(t);
-  const mv=el('div','tgrip mv'),rz=el('div','tgrip rz');
-  grip(mv,b,'move');grip(rz,b,'size');
-  d.appendChild(mv);d.appendChild(rz);
-  return d;
-}
-function grip(g,b,mode){
-  g.addEventListener('pointerdown',e=>{
-    e.stopPropagation();e.preventDefault();
-    try{g.setPointerCapture(e.pointerId)}catch(_){}
-    const q=pageXY(e);
-    tdrag={b,mode,q0:q,x0:b.x,y0:b.y,w0:b.w};
-  });
-  g.addEventListener('pointermove',e=>{
-    if(!tdrag)return;
-    e.stopPropagation();
-    const q=pageXY(e);
-    if(tdrag.mode==='move'){
-      tdrag.b.x=clamp(Math.round(tdrag.x0+q.x-tdrag.q0.x),-30,PW-40);
-      tdrag.b.y=clamp(snapTop(tdrag.b,tdrag.y0+q.y-tdrag.q0.y),-20,PH-30);
-    }else{
-      tdrag.b.w=clamp(Math.round(tdrag.w0+q.x-tdrag.q0.x),90,PW+20);
+/* Safari owns the DOM while you write, so read it back rather than assume its shape */
+function readLayer(){
+  const out=[];
+  tl.childNodes.forEach(n=>{
+    if(n.nodeType===3){if(n.nodeValue.length)out.push({t:n.nodeValue,f:''})}
+    else if(n.nodeName==='BR')out.push({t:'',f:''});
+    else{
+      const f=(n.dataset&&n.dataset.f)||'';
+      /* Safari sometimes nests or leaves a stray newline in a line — split it out so
+         the font list can never drift out of step with the lines */
+      (n.innerText||'').replace(/\n+$/,'').split('\n').forEach(t=>out.push({t,f}));
     }
-    positionTexts();
   });
-  const end=e=>{if(!tdrag)return;e.stopPropagation();tdrag=null;savePage();markOverflow()};
-  g.addEventListener('pointerup',end);g.addEventListener('pointercancel',end);
+  return{tx:out.map(o=>o.t).join('\n'),pf:out.map(o=>o.f)};
 }
-function positionTexts(){
+function syncModel(){
   if(!CUR)return;
-  const map=new Map(pg().texts.map(b=>[b.id,b]));
-  const dflt=(TINTS[pad().tint]||TINTS.ivory).txt;
-  textwrap.querySelectorAll('.tbox').forEach(d=>{
-    const b=map.get(d.dataset.id);if(!b)return;
-    d.style.left=(T.tx+b.x*T.s)+'px';d.style.top=(T.ty+b.y*T.s)+'px';d.style.width=(b.w*T.s)+'px';
-    const t=d.firstChild;
-    t.style.fontFamily=fontOf(b.f).css;t.style.fontSize=(b.fs*T.s)+'px';
-    t.style.lineHeight=(boxLH(b)*T.s)+'px';t.style.color=b.c||dflt;
-    t.style.minHeight=(boxLH(b)*T.s)+'px';
-  });
-  positionPad();
-  const r=stageRect||stage.getBoundingClientRect();
-  textwrap.style.clipPath='inset('+Math.max(0,T.ty)+'px '+Math.max(0,r.width-(T.tx+PW*T.s))+'px '+
-    Math.max(0,r.height-(T.ty+PH*T.s))+'px '+Math.max(0,T.tx)+'px)';
-  posTxtbar();if(sel)posSelbar();
+  const r=readLayer(),g=pg();
+  g.tx=r.tx;g.pf=r.pf.some(Boolean)?r.pf:[];
 }
-function typeTap(q){
-  if(selBox){selBox=null;syncSel();return}
-  commitPad();setPadOrigin(q);spFrozen=true;
-  try{sp.focus()}catch(_){}
+function positionText(){
+  if(!CUR)return;
+  const p=pad(),fs=txFs();
+  tl.style.left=T.tx+'px';tl.style.top=T.ty+'px';
+  tl.style.width=(PW*T.s)+'px';tl.style.height=(PH*T.s)+'px';
+  tl.style.paddingLeft=(txLeft()*T.s)+'px';tl.style.paddingTop=(txTop()*T.s)+'px';
+  tl.style.paddingRight=(txRight()*T.s)+'px';tl.style.paddingBottom=(txBottom()*T.s)+'px';
+  tl.style.fontFamily=fontOf(p.font).css;tl.style.fontSize=(fs*T.s)+'px';
+  tl.style.lineHeight=(txLH()*T.s)+'px';
+  tl.style.color=p.tc||(TINTS[p.tint]||TINTS.ivory).txt;
+  tl.dataset.hint='Write anywhere on the paper';
+}
+tl.addEventListener('input',()=>{syncModel();savePage();markOverflowSoon()});
+/* remember which lines are selected — tapping the font chip blurs the layer and
+   throws the selection away, so it has to be captured while it still exists */
+let selPs=[];
+document.addEventListener('selectionchange',()=>{
+  if(MODE!=='type'||!CUR)return;
+  const s2=getSelection();
+  if(!s2.rangeCount||!tl.contains(s2.anchorNode))return;
+  const r=s2.getRangeAt(0);
+  const ps=[];
+  [...tl.children].forEach((d,i)=>{try{if(r.intersectsNode(d))ps.push(i)}catch(_){}});
+  selPs=ps;
+});
+function applyFontToLines(fk){
+  syncModel();
+  const g=pg(),pf=(g.pf||[]).slice(),n=(g.tx||'').split('\n').length;
+  while(pf.length<n)pf.push('');
+  const targets=selPs.length?selPs:[0];
+  targets.forEach(i=>{if(i<n)pf[i]=(fk===pad().font)?'':fk});
+  g.pf=pf.some(Boolean)?pf:[];
+  renderText();savePage();
+}
+function caretAt(cx,cy){
+  if(MODE!=='type'||!CUR)return;
+  try{
+    tl.focus({preventScroll:true});
+    const r=document.caretRangeFromPoint?document.caretRangeFromPoint(cx,cy):null;
+    if(r&&tl.contains(r.startContainer)){const s2=getSelection();s2.removeAllRanges();s2.addRange(r)}
+  }catch(_){}
 }
 
-/* ================= WRITE-ANYWHERE SHEET =================
-   Scribble only converts over an editable field, so in Type mode the whole sheet of
-   paper is one. Its text origin is moved under the nib before you touch down, so the
-   words appear where you wrote rather than at some box's corner. When you pause, the
-   text is cut loose as an ordinary block — same font, same spot, no visible jump —
-   which you can then drag, resize, recolour or flow like any other.                */
-const sp=$('#scribepad');
-let spOrigin={x:112,y:108},spFrozen=false,spTm=0,unfTm=0;
-const padFs=()=>Math.round(RS()*fontOf(pad().font).m);
-const padLH=()=>boxLH({fs:padFs()});
-const padHasText=()=>!!(sp.textContent||'').trim();
-const readEl=el2=>(CE==='plaintext-only')?el2.textContent:el2.innerText;
-const baseOff=()=>{const fs=padFs();return (padLH()-fs)/2+fs*.78};
-function setPadOrigin(q){
-  const lh=padLH();
-  spOrigin={x:clamp(Math.round(q.x),8,Math.max(8,PW-150)),
-            y:clamp(snapTop({fs:padFs()},q.y-baseOff()),-8,Math.max(0,PH-lh))};
-  positionPad();
-}
-function positionPad(){
-  if(!CUR)return;
-  const p=pad(),fs=padFs();
-  sp.style.left=T.tx+'px';sp.style.top=T.ty+'px';
-  sp.style.width=(PW*T.s)+'px';sp.style.height=(PH*T.s)+'px';
-  sp.style.paddingLeft=(spOrigin.x*T.s)+'px';sp.style.paddingTop=(spOrigin.y*T.s)+'px';
-  sp.style.fontFamily=fontOf(p.font).css;sp.style.fontSize=(fs*T.s)+'px';
-  sp.style.lineHeight=(padLH()*T.s)+'px';
-  sp.style.color=p.tc||(TINTS[p.tint]||TINTS.ivory).txt;
-}
-function padDefault(){const p=pad();setPadOrigin({x:p.paper==='ruled'?112:60,y:RS()*2})}
-sp.addEventListener('input',()=>{spFrozen=true;clearTimeout(spTm);spTm=setTimeout(commitPad,4000)});
-sp.addEventListener('blur',()=>{if(padHasText())commitPad()});
-/* a block directly under the last one, same font and size, is a continued paragraph */
-function adjacentAbove(){
-  const fs=padFs(),lh=padLH(),f=pad().font;
-  return pg().texts.find(o=>{
-    if(o.f!==f||o.fs!==fs||Math.abs(o.x-spOrigin.x)>34)return false;
-    const d=boxEl(o.id);if(!d)return false;
-    const gap=spOrigin.y-(o.y+d.firstChild.getBoundingClientRect().height/T.s);
-    return gap>-lh*.55&&gap<lh*.9;
-  });
-}
-function commitPad(){
-  clearTimeout(spTm);
-  if(!CUR||!padHasText()){sp.textContent='';spFrozen=false;return}
-  const txt=readEl(sp).replace(/\s+$/,'');
-  let w=0;
-  try{const r=document.createRange();r.selectNodeContents(sp);
-    for(const q of r.getClientRects())w=Math.max(w,q.width)}catch(_){}
-  sp.textContent='';spFrozen=false;
-  if(!txt.trim())return;
-  const near=adjacentAbove();
-  if(near){
-    const before=near.tx;near.tx=before+'\n'+txt.replace(/^\s+/,'');
-    pushOp({op:'tedit',b:near,before,after:near.tx});
-  }else{
-    const p=pad();
-    const b={id:uid(),x:spOrigin.x,y:spOrigin.y,w:clamp(Math.ceil(w/T.s)+14,90,Math.max(90,PW-spOrigin.x-14)),
-      f:p.font,fs:padFs(),c:p.tc||null,tx:txt};
-    pg().texts.push(b);pushOp({op:'tadd',b});
-  }
-  renderTexts();markOverflowSoon();
-}
-const curBox=()=>pg().texts.find(t=>t.id===selBox);
-const boxEl=id=>textwrap.querySelector('[data-id="'+id+'"]');
-const PAGE_BOT=()=>PH-6;
-function overflowPx(b){
-  const d=boxEl(b.id);if(!d)return 0;
-  const h=d.firstChild.getBoundingClientRect().height/T.s;
-  return (b.y+h)-PAGE_BOT();
+/* ---------- overflow ---------- */
+const PAGE_BOT=()=>PH-txBottom();
+function overflowPx(){
+  if(!CUR)return 0;
+  const r=stage.getBoundingClientRect();
+  const rg=document.createRange();
+  try{rg.selectNodeContents(tl)}catch(_){return 0}
+  const rects=rg.getClientRects();
+  if(!rects.length)return 0;
+  const bot=(rects[rects.length-1].bottom-r.top-T.ty)/T.s;
+  return bot-PAGE_BOT();
 }
 let ovTm;
 function markOverflowSoon(){clearTimeout(ovTm);ovTm=setTimeout(markOverflow,260)}
 function markOverflow(){
   if(!CUR)return;
-  pg().texts.forEach(b=>{const d=boxEl(b.id);if(d)d.classList.toggle('over',overflowPx(b)>2)});
-  const b=curBox();
-  $('#tFlow').classList.toggle('hidden',!(b&&overflowPx(b)>2));
+  const over=overflowPx()>2;
+  tl.classList.toggle('over',over);
+  $('#flowChip').classList.toggle('hidden',!(over&&MODE==='type'));
 }
-/* pour whatever falls past the page edge onto the next page, breaking on a word */
-function flowBox(b){
-  const d=boxEl(b.id);if(!d)return;
-  const t=d.firstChild,txt=t.textContent;
-  if(!txt.trim())return;
-  const nodes=[];const w=document.createTreeWalker(t,NodeFilter.SHOW_TEXT);
-  for(let n=w.nextNode();n;n=w.nextNode())nodes.push(n);
-  if(!nodes.length)return;
-  const locate=i=>{for(const n of nodes){const L=n.nodeValue.length;if(i<L)return[n,i];i-=L}
-    const l=nodes[nodes.length-1];return[l,Math.max(0,l.nodeValue.length-1)]};
+/* pour whatever falls past the bottom rule onto the next page, breaking on a whole
+   word and carrying each line's font with it */
+const firstTextNode=d=>{const w=document.createTreeWalker(d,NodeFilter.SHOW_TEXT);return w.nextNode()};
+function flowPage(){
+  if(!CUR)return;
+  syncModel();renderText();                 /* normalise, so a child == a line */
+  if(overflowPx()<=2)return;
+  const p=pad(),g=pg(),lines=(g.tx||'').split('\n'),pf=(g.pf||[]).slice();
+  while(pf.length<lines.length)pf.push('');
   const r=stage.getBoundingClientRect(),limit=r.top+T.ty+PAGE_BOT()*T.s;
-  const rg=document.createRange();
-  /* bottom of the line holding the i-th character; grows monotonically with i */
-  const past=i=>{
-    if(i<=0)return false;
-    const[n,o]=locate(i-1);
-    rg.setStart(nodes[0],0);rg.setEnd(n,o+1);
-    const rs=rg.getClientRects();
-    return rs.length?rs[rs.length-1].bottom>limit:false;
-  };
-  if(!past(txt.length)){markOverflow();return}
-  const p=pad();
-  if(past(1)){                                  /* not even the first line fits: move it all */
-    const created=ensureNext(),np=p.pages[p.cur+1];
-    const nb=Object.assign({},b,{id:uid(),y:topY(b)});
-    const i=pg().texts.indexOf(b);pg().texts.splice(i,1);np.texts.push(nb);np.m=Date.now();
-    markDirty(CUR,np.id);
-    pushOp({op:'flow',b,before:txt,after:null,np,nb,moved:{i},created});
-    selBox=null;renderTexts();syncSel();toast('Moved to page '+(p.cur+2));return;
+  const kids=[...tl.children];
+  let li=-1,ci=0;
+  for(let i=0;i<kids.length&&i<lines.length;i++){
+    if(kids[i].getBoundingClientRect().bottom<=limit)continue;
+    li=i;
+    const txt=lines[i],node=firstTextNode(kids[i]);
+    if(!txt.length||!node)break;
+    const rg=document.createRange();
+    const past=k=>{
+      rg.setStart(node,0);rg.setEnd(node,Math.min(k,node.nodeValue.length));
+      const rs=rg.getClientRects();
+      return rs.length?rs[rs.length-1].bottom>limit:false;
+    };
+    if(!past(txt.length)){li=-1;continue}    /* this line clears the rule after all */
+    let lo=1,hi=txt.length;
+    while(lo<hi){const mid=(lo+hi)>>1;if(past(mid))hi=mid;else lo=mid+1}
+    let c=lo-1;
+    while(c>0&&!/\s/.test(txt[c-1]))c--;     /* break on a word, not mid-word */
+    ci=Math.max(0,c);break;
   }
-  let lo=1,hi=txt.length;
-  while(lo<hi){const mid=(lo+hi)>>1;if(past(mid))hi=mid;else lo=mid+1}
-  let c=lo-1;                                   /* last character that still fits */
-  while(c>0&&!/\s/.test(txt[c-1]))c--;          /* break on a word boundary */
-  if(c<=0)c=lo-1;
-  const head=txt.slice(0,c).replace(/\s+$/,''),tail=txt.slice(c).replace(/^[ \t]+/,'');
-  if(!tail.trim()){markOverflow();return}
-  const created=ensureNext(),np=p.pages[p.cur+1];
-  const nb={id:uid(),x:b.x,y:topY(b),w:b.w,f:b.f,fs:b.fs,c:b.c,tx:tail};
-  b.tx=head;np.texts.push(nb);np.m=Date.now();
-  markDirty(CUR,np.id);
-  pushOp({op:'flow',b,before:txt,after:head,np,nb,created});
-  renderTexts();syncSel();
+  if(li<0)return;
+  const headL=lines.slice(0,li),headF=pf.slice(0,li);
+  const tailL=[],tailF=[];
+  const rest=lines[li].slice(ci).replace(/^[ \t]+/,'');
+  if(ci>0){headL.push(lines[li].slice(0,ci).replace(/\s+$/,''));headF.push(pf[li])}
+  if(rest.length){tailL.push(rest);tailF.push(pf[li])}
+  tailL.push(...lines.slice(li+1));tailF.push(...pf.slice(li+1));
+  if(!tailL.join('\n').trim())return;
+  const created=!p.pages[p.cur+1];
+  if(created)p.pages.splice(p.cur+1,0,newPage());
+  const np=p.pages[p.cur+1];
+  const before={tx:np.tx||'',pf:(np.pf||[]).slice()};
+  const tail={tx:tailL.join('\n')+(before.tx?'\n'+before.tx:''),pf:tailF.concat(before.tx?before.pf:[])};
+  const head={tx:headL.join('\n'),pf:headF};
+  pushOp({op:'flow',g,head,tail,whole:{tx:g.tx,pf:(g.pf||[]).slice()},np,before,created});
+  g.tx=head.tx;g.pf=head.pf.some(Boolean)?head.pf:[];
+  np.tx=tail.tx;np.pf=tail.pf.some(Boolean)?tail.pf:[];np.m=Date.now();markDirty(CUR,np.id);
+  renderText();
   toast('Continued on page '+(p.cur+2));
 }
-const topY=b=>snapTop(b,RS()*2);
-function ensureNext(){
-  const p=pad();
-  if(p.pages[p.cur+1])return false;
-  p.pages.splice(p.cur+1,0,newPage());return true;
-}
-$('#tFlow').addEventListener('click',()=>{const b=curBox();if(b)flowBox(b)});
-$('#tSmall').addEventListener('click',()=>{const b=curBox();if(!b)return;b.fs=clamp(Math.round(b.fs*.88),14,180);positionTexts();savePage();markOverflow()});
-$('#tBig').addEventListener('click',()=>{const b=curBox();if(!b)return;b.fs=clamp(Math.round(b.fs*1.14),14,180);positionTexts();savePage();markOverflow()});
-$('#tCol').addEventListener('click',()=>{const b=curBox();if(!b)return;b.c=COL;positionTexts();syncSel();savePage()});
-$('#tFont').addEventListener('click',()=>{fontTarget='box';buildFontSheet();openSheet('#sheetFont')});
-$('#tDel').addEventListener('click',()=>{
-  const b=curBox();if(!b)return;
-  const i=pg().texts.indexOf(b);
-  pg().texts.splice(i,1);pushOp({op:'tdel',b,i});
-  selBox=null;renderTexts();syncSel();
-});
+$('#flowChip').addEventListener('click',flowPage);
 
 /* ---------- font sheet ---------- */
-let fontTarget='pad';
-$('#fontChip').addEventListener('click',()=>{fontTarget=selBox?'box':'pad';buildFontSheet();openSheet('#sheetFont')});
+let fontScope='all';
+$('#fontChip').addEventListener('click',()=>{fontScope=selPs.length?'sel':'all';buildFontSheet();openSheet('#sheetFont')});
+$('#fontScope').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.x==='sel'&&!selPs.length){toast('Select some writing on the page first');return}
+  fontScope=b.dataset.x;buildFontSheet();
+});
 function buildFontSheet(){
-  const b=fontTarget==='box'?curBox():null;
-  $('#fontSheetTitle').textContent=b?'This block':'Default handwriting';
-  $('#fontSheetSub').textContent=b?'Only the selected block changes.':'Used for new text blocks on this notebook.';
-  const cur=b?b.f:pad().font;
+  const scoped=fontScope==='sel'&&selPs.length;
+  syncSeg('#fontScope','x',scoped?'sel':'all');
+  $('#fontScope').firstElementChild.textContent=selPs.length?
+    (selPs.length===1?'Selected line':'Selected lines ('+selPs.length+')'):'Selected lines';
+  $('#fontScope').firstElementChild.style.opacity=selPs.length?1:.45;
+  $('#fontSheetSub').textContent=scoped?
+    'Only the lines you selected change — the rest of the notebook keeps its hand.':
+    'Sets the hand for the whole notebook. To change just a few lines, select them on the page first.';
+  const cur=scoped?((pg().pf||[])[selPs[0]]||pad().font):pad().font;
   const list=$('#fontList');list.innerHTML='';
   FONTS.forEach(f=>{
     const c=el('button','fontcard'+(cur===f.k?' on':''),
       '<span class="prev">Obs done, tea earned — 14:00</span><small>'+f.n+'</small>');
     c.querySelector('.prev').style.fontFamily=f.css;
     c.addEventListener('click',()=>{
-      if(b){const o=fontOf(b.f);b.fs=clamp(Math.round(b.fs*f.m/o.m),14,180);b.f=f.k;positionTexts();markOverflow()}
-      else{pad().font=f.k;applyPadLook();padDefault()}
-      b?savePage():save();buildFontSheet();syncSel();
+      if(scoped)applyFontToLines(f.k);
+      else{pad().font=f.k;applyPadLook();save();renderText()}
+      buildFontSheet();
     });
     list.appendChild(c);
   });
   const tr=$('#textColRow');tr.innerHTML='';
   const T2=TINTS[pad().tint]||TINTS.ivory;
   const cols=[T2.txt,'#274060','#0a84ff','#00c7be','#1db954','#ffcc00','#ff9500','#ff3b30','#e5195e','#af52de','#5856d6','#6b4a2f','#f2f1ec'];
-  const curC=(b?b.c:pad().tc)||T2.txt;
+  const curC=pad().tc||T2.txt;
   cols.forEach(c=>{
     const d=el('button','tint-s'+(curC===c?' on':''));
     d.style.background=c;d.style.width='30px';d.style.height='30px';
-    d.addEventListener('click',()=>{
-      if(b)b.c=c;else pad().tc=c;
-      b?savePage():save();positionTexts();buildFontSheet();syncSel();
-    });
+    d.addEventListener('click',()=>{pad().tc=c;save();positionText();buildFontSheet()});
     tr.appendChild(d);
   });
 }
@@ -1653,11 +1561,11 @@ $('#gDelete').addEventListener('click',()=>{
   markDirty(id,null);saveLocal();closeSheets();goShelf();
 });
 /* ---------- pages ---------- */
-$('#pgPrev').addEventListener('click',()=>{commitPad();const p=pad();if(p.cur>0){p.cur--;saveLocal();loadPage()}});
-$('#pgNext').addEventListener('click',()=>{commitPad();const p=pad();if(p.cur<p.pages.length-1){p.cur++;saveLocal();loadPage()}});
-$('#pgAdd').addEventListener('click',()=>{commitPad();const p=pad();p.pages.splice(p.cur+1,0,newPage());p.cur++;savePage();loadPage();toast('Page added')});
+$('#pgPrev').addEventListener('click',()=>{const p=pad();if(p.cur>0){p.cur--;saveLocal();loadPage()}});
+$('#pgNext').addEventListener('click',()=>{const p=pad();if(p.cur<p.pages.length-1){p.cur++;saveLocal();loadPage()}});
+$('#pgAdd').addEventListener('click',()=>{const p=pad();p.pages.splice(p.cur+1,0,newPage());p.cur++;savePage();loadPage();toast('Page added')});
 $('#pgDel').addEventListener('click',()=>{
-  commitPad();const p=pad();
+  const p=pad();
   if(p.pages.length===1){
     if(confirm('Clear this page?')){const old=p.pages[0].id;p.pages[0]=newPage();markDel(CUR,old);savePage();loadPage()}
     return;
@@ -1668,9 +1576,7 @@ $('#pgDel').addEventListener('click',()=>{
   markDel(CUR,gone);savePage();loadPage();
 });
 /* ---------- export ---------- */
-const boxText=b=>b.tx||'';
 async function exportPNG(){
-  commitPad();
   const p=pad();if(!p)return;
   const T2=TINTS[p.tint]||TINTS.ivory,EX=2,rs=RS(),gs=Math.round(rs*.63);
   const cv=document.createElement('canvas');cv.width=PW*EX;cv.height=PH*EX;
@@ -1686,21 +1592,25 @@ async function exportPNG(){
   if(p.paper==='ruled')vline(95);
   if(p.paper==='cornell'){vline(PW*.3);hline(PH*.8)}
   try{await document.fonts.ready}catch(_){}
-  pg().texts.forEach(b=>{
-    const txt=boxText(b);if(!txt||!txt.trim())return;
-    const f=fontOf(b.f),lh=boxLH(b);
-    c.font=b.fs+'px '+f.css;c.fillStyle=b.c||T2.txt;c.textBaseline='alphabetic';
-    let y=b.y+(lh-b.fs)/2+b.fs*.78;
-    txt.replace(/\u00a0/g,' ').split('\n').forEach(para=>{
+  const txt=(pg().tx||'').replace(/\u00a0/g,' ');
+  if(txt.trim()){
+    const lh=txLH(),x0=txLeft(),maxW=PW-x0-txRight(),pf=pg().pf||[],lines=txt.split('\n');
+    c.fillStyle=p.tc||T2.txt;c.textBaseline='alphabetic';
+    let top=txTop();
+    outer:
+    for(let i=0;i<lines.length;i++){
+      const f=fontOf(pf[i]||p.font),fs=Math.round(RS()*f.m),off=(lh-fs)/2+fs*.78;
+      c.font=fs+'px '+f.css;
       let line='';
-      para.split(' ').forEach(w=>{
+      for(const w of lines[i].split(' ')){
         const t=line?line+' '+w:w;
-        if(c.measureText(t).width>b.w-8&&line){c.fillText(line,b.x+4,y);y+=lh;line=w}
+        if(c.measureText(t).width>maxW&&line){c.fillText(line,x0,top+off);top+=lh;line=w;if(top>PH)break outer}
         else line=t;
-      });
-      c.fillText(line,b.x+4,y);y+=lh;
-    });
-  });
+      }
+      c.fillText(line,x0,top+off);top+=lh;
+      if(top>PH)break;
+    }
+  }
   const ew=document.createElement('canvas');ew.width=cv.width;ew.height=cv.height;
   const ec=ew.getContext('2d');ec.setTransform(EX,0,0,EX,0,0);
   pg().strokes.forEach(st=>renderStroke(st,c,ec,ew));
@@ -1773,7 +1683,7 @@ const put=(path,data,t)=>api(dbBase()+path+'.json?auth='+encodeURIComponent(t),
 const metaOf=p=>({name:p.name,cover:p.cover,paper:p.paper,tint:p.tint,sp:p.sp,land:!!p.land,font:p.font,
   tc:p.tc||null,col:p.col||null,hcol:p.hcol||null,size:p.size||6,order:p.pages.map(g=>g.id),
   m:p.mtime||Date.now(),d:S.dev});
-const pageOf=g=>({strokes:g.strokes||[],texts:g.texts||[],m:g.m||Date.now(),d:S.dev});
+const pageOf=g=>({strokes:g.strokes||[],tx:g.tx||'',pf:g.pf&&g.pf.some(Boolean)?g.pf:[],m:g.m||Date.now(),d:S.dev});
 async function flush(){
   if(!FB.uid||!dirty.size)return;
   if(!navigator.onLine){setSync('offline');return}
@@ -1816,9 +1726,9 @@ function mergePage(id,pid,g){
   const p=padById(id);if(!p)return;
   if(!g){p.pages=p.pages.filter(x=>x.id!==pid);if(!p.pages.length)p.pages=[newPage()];p.cur=clamp(p.cur,0,p.pages.length-1);return}
   let L=p.pages.find(x=>x.id===pid);
-  if(!L){L={id:pid,strokes:[],texts:[],m:0};p.pages.push(L)}
+  if(!L){L={id:pid,strokes:[],tx:'',pf:[],m:0};p.pages.push(L)}
   if((g.m||0)<=(L.m||0))return;
-  L.strokes=g.strokes||[];L.texts=g.texts||[];L.m=g.m||Date.now();
+  L.strokes=g.strokes||[];L.tx=g.tx||'';L.pf=g.pf||[];L.m=g.m||Date.now();
   UMAP.delete(L);
 }
 function mergePad(id,r){
@@ -1853,8 +1763,8 @@ function afterMerge(){
   if(!p)return;
   if(!p.pages.length)p.pages=[newPage()];
   p.cur=clamp(p.cur||0,0,p.pages.length-1);
-  if(live||dragSel||tdrag)return;
-  clearSel();setGeom();applyPadLook();renderTexts();redraw();updatePg();
+  if(live||dragSel||document.activeElement===tl)return;
+  clearSel();setGeom();applyPadLook();renderText();redraw();updatePg();
 }
 function applyRemote(path,data){
   merging=true;
@@ -1974,7 +1884,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&FB.uid&&!
 })();
 /* ---------- boot ---------- */
 renderShelf();
-try{document.fonts.ready.then(()=>{if(CUR){positionTexts();markOverflow()}})}catch(_){}
+try{document.fonts.ready.then(()=>{if(CUR){positionText();markOverflow()}})}catch(_){}
 setSync(FB.uid?'busy':'off');
 if(FB.cfg&&FB.ref){firstPut=true;connect()}
 if(!store.ok)toast('Preview mode — notes will save on-device once this runs in Safari or from your GitHub Pages site.');
